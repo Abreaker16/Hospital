@@ -1,0 +1,36 @@
+steps:
+  # 1. Build the Container Image using Docker
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA'
+      - '.'
+
+  # 2. Push the Container Image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA'
+
+  # 3. Deploy to GCP Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image=${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA'
+      - '--region=${_LOCATION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+
+# Default Substitutions (Override these in your Cloud Build trigger setup if needed)
+substitutions:
+  _LOCATION: 'us-central1'         # e.g., us-central1, asia-south1
+  _REPOSITORY: 'hospital-app-repo'  # Name of your Artifact Registry repository
+  _SERVICE_NAME: 'hospital-app'     # Name of your Cloud Run service
+
+# Store images in Google Artifact Registry
+images:
+  - '${_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_SERVICE_NAME}:$COMMIT_SHA'
